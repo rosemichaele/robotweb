@@ -1,4 +1,4 @@
-Robot Web
-=========
+Robot Web Project
+=================
 
-Come back later.
+A Django project built to support developing, running, and reporting on Robot Framework tests.

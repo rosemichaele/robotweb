@@ -19,6 +19,6 @@ setup(
     long_description=long_description,
     packages=find_packages('src', exclude=['contrib', 'docs', 'atest', 'utest']),
     python_requires='>=3.5',
-    install_requires=['django>=2.1.7'],
+    install_requires=['django>=2.1.7', 'robotframework>=3.1.1'],
     description='A web utility for executing Robot Framework tests and viewing test results from a browser.'
 )
