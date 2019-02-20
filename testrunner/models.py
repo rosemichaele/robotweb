@@ -1,8 +1,9 @@
+import os
+
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 # from django.contrib.auth.models import User
-# Create your models here.
 
 
 class BaseObject(models.Model):
@@ -16,32 +17,77 @@ class BaseObject(models.Model):
     # created_by = models.ForeignKey(User,
     #                                on_delete=models.PROTECT,
     #                                help_text='Designates who created this thing.',
-    #                                related_name='record_creator')
+    #                                related_name='records_created')
     # modified_by = models.ForeignKey(User,
     #                                 on_delete=models.PROTECT,
     #                                 help_text='Designates who last changed this thing.',
-    #                                 related_name='record_modifier')
+    #                                 related_name='records_modified')
 
     def __str__(self):
         return self.name
 
 
+class RobotTag(BaseObject):
+    description = models.TextField(max_length=4000, blank=True, null=True)
+
+
+class RobotVariable(BaseObject):
+    description = models.TextField(max_length=4000, blank=True, null=True)
+
+
+class RobotApplicationUnderTest(BaseObject):
+
+    app_test_location = models.FilePathField(path=os.environ.get('USERPROFILE') + '\\ws\\robotframework',
+                                             allow_files=False,
+                                             allow_folders=True,
+                                             max_length=200,
+                                             recursive=True,
+                                             help_text='The local path to the directory that contains tests for this '
+                                                       'app.')
+    description = models.TextField(max_length=4000, null=True)
+    robot_location = models.FilePathField(path=os.environ.get('USERPROFILE') + '\\ws\\robotframework',
+                                          allow_files=True,
+                                          allow_folders=False,
+                                          max_length=200,
+                                          recursive=True,
+                                          match='^.*.exe.*$',
+                                          help_text='The local path to the robot executable to use when running the '
+                                                    'tests for this application.')
+
+
 class RobotTestSuite(BaseObject):
+
     documentation = models.TextField(max_length=4000, null=True)
+    application = models.ForeignKey(RobotApplicationUnderTest,
+                                    on_delete=models.CASCADE,
+                                    related_name='app_suite',
+                                    related_query_name='parent_application')
     parent = models.ForeignKey('self',
                                on_delete=models.CASCADE,
                                null=True,
+                               blank=True,
                                related_name='child_suite',
                                related_query_name='parent_suite')
+    robot_tags = models.ManyToManyField(RobotTag)
+
+    suite_location = models.FilePathField(path=os.environ.get('SNOW_RF_DIR') + '\\SNOW',
+                                          allow_files=True,
+                                          allow_folders=True,
+                                          max_length=200,
+                                          recursive=True,
+                                          blank=True,
+                                          help_text='The local path to the directory or file that contains tests for '           
+                                                    'this suite. Options to select this will populate after an '
+                                                    'application is selected and saved.')
 
 
 class RobotTest(BaseObject):
     documentation = models.TextField(max_length=4000, null=True)
     robot_suite = models.ForeignKey(RobotTestSuite,
                                     on_delete=models.CASCADE,
-                                    null=True,
                                     related_name='test',
                                     related_query_name='suite')
+    robot_tags = models.ManyToManyField(RobotTag)
 
 
 class RobotTestStep(BaseObject):
@@ -83,7 +129,9 @@ class RobotTestRun(models.Model):
                               help_text='Why the test run has the current status.')
 
     def __str__(self):
-        return '{name}: {result}'.format(name=self.test.name, result=self.result)
+        return '{name}: {result} - completed at {end}'.format(name=self.robot_test.name,
+                                                              result=self.result,
+                                                              end=self.end_time)
 
     def set_execution_time(self):
         self.execution_time = self.end_time - self.start_time
