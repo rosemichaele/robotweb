@@ -6,6 +6,11 @@ from django.utils import timezone
 # from django.contrib.auth.models import User
 
 
+ROBOT_PROJECT_LOCATION = os.environ.get('ROBOT_PROJECT_PATH')
+if ROBOT_PROJECT_LOCATION is None:
+    raise AssertionError('The ROBOT_PROJECT_PATH environment variable must be set to continue.')
+
+
 class BaseObject(models.Model):
     active = models.BooleanField(default=True)
     name = models.CharField(max_length=200)
@@ -27,36 +32,50 @@ class BaseObject(models.Model):
         return self.name
 
 
-class RobotTag(BaseObject):
-    description = models.TextField(max_length=4000, blank=True, null=True)
-
-
-class RobotVariable(BaseObject):
-    description = models.TextField(max_length=4000, blank=True, null=True)
-
-
 class RobotApplicationUnderTest(BaseObject):
-
-    app_test_location = models.FilePathField(path=os.environ.get('USERPROFILE') + '\\ws\\robotframework',
+    app_test_location = models.FilePathField(path=ROBOT_PROJECT_LOCATION,
                                              allow_files=False,
                                              allow_folders=True,
                                              max_length=200,
                                              recursive=True,
+                                             editable=False,
                                              help_text='The local path to the directory that contains tests for this '
                                                        'app.')
     description = models.TextField(max_length=4000, null=True)
-    robot_location = models.FilePathField(path=os.environ.get('USERPROFILE') + '\\ws\\robotframework',
+    robot_location = models.FilePathField(path=ROBOT_PROJECT_LOCATION,
                                           allow_files=True,
                                           allow_folders=False,
                                           max_length=200,
                                           recursive=True,
+                                          editable=False,
                                           match='^.*.exe.*$',
                                           help_text='The local path to the robot executable to use when running the '
                                                     'tests for this application.')
 
 
-class RobotTestSuite(BaseObject):
+class RobotTag(BaseObject):
+    application = models.ForeignKey(RobotApplicationUnderTest,
+                                    on_delete=models.CASCADE,
+                                    related_name='app_robot_tag',
+                                    related_query_name='parent_application',
+                                    null=True)
+    description = models.TextField(max_length=4000, blank=True, null=True)
 
+
+class RobotVariable(BaseObject):
+    application = models.ForeignKey(RobotApplicationUnderTest,
+                                    on_delete=models.CASCADE,
+                                    related_name='app_robot_variable',
+                                    related_query_name='parent_application',
+                                    null=True)
+    description = models.TextField(max_length=4000, blank=True, null=True)
+    value = models.CharField(max_length=200, blank=True, null=True)
+
+    def __str__(self):
+        return '<{name}:{value}>'.format(name=self.name, value=self.value)
+
+
+class RobotTestSuite(BaseObject):
     documentation = models.TextField(max_length=4000, null=True)
     application = models.ForeignKey(RobotApplicationUnderTest,
                                     on_delete=models.CASCADE,
@@ -68,17 +87,22 @@ class RobotTestSuite(BaseObject):
                                blank=True,
                                related_name='child_suite',
                                related_query_name='parent_suite')
-    robot_tags = models.ManyToManyField(RobotTag)
+    robot_tags = models.ManyToManyField(RobotTag,
+                                        blank=True)
 
-    suite_location = models.FilePathField(path=os.environ.get('SNOW_RF_DIR') + '\\SNOW',
+    suite_location = models.FilePathField(path=ROBOT_PROJECT_LOCATION,
                                           allow_files=True,
                                           allow_folders=True,
                                           max_length=200,
                                           recursive=True,
                                           blank=True,
+                                          editable=False,
                                           help_text='The local path to the directory or file that contains tests for '           
                                                     'this suite. Options to select this will populate after an '
                                                     'application is selected and saved.')
+
+    def __str__(self):
+        return '{app}: {name}'.format(app=self.application.name, name=self.name)
 
 
 class RobotTest(BaseObject):
@@ -87,7 +111,8 @@ class RobotTest(BaseObject):
                                     on_delete=models.CASCADE,
                                     related_name='test',
                                     related_query_name='suite')
-    robot_tags = models.ManyToManyField(RobotTag)
+    robot_tags = models.ManyToManyField(RobotTag,
+                                        blank=True)
 
 
 class RobotTestStep(BaseObject):
