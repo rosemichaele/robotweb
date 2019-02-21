@@ -102,7 +102,16 @@ class RobotTestSuite(BaseObject):
                                                     'application is selected and saved.')
 
     def __str__(self):
-        return '{app}: {name}'.format(app=self.application.name, name=self.name)
+        return '{app}: {name}'.format(app=self.application.name, name=self.verbose_name)
+
+    @property
+    def verbose_name(self):
+        this_suite = self
+        names = [str(self.name)]
+        while this_suite.parent:
+            names.append(str(this_suite.parent.name))
+            this_suite = this_suite.parent
+        return '.'.join(list(reversed(names)))
 
 
 class RobotTest(BaseObject):
@@ -114,6 +123,10 @@ class RobotTest(BaseObject):
     robot_tags = models.ManyToManyField(RobotTag,
                                         blank=True)
 
+    @property
+    def verbose_name(self):
+        return self.robot_suite.verbose_name + '.' + self.name
+
 
 class RobotTestStep(BaseObject):
     keyword = models.CharField(max_length=200)
@@ -122,7 +135,8 @@ class RobotTestStep(BaseObject):
     order = models.IntegerField('execution order',
                                 validators=[MinValueValidator(0)])
     arguments = models.TextField(max_length=4000,
-                                 help_text='A pipe separated string of arguments passed to the test step keyword.',
+                                 help_text='A list of arguments passed to the test step keyword'
+                                           ' with a line break between each.',
                                  null=True)
 
 
