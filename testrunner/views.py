@@ -7,9 +7,7 @@ from .models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
 
 
 class ViewFinder:
-    """
-    Helper methods to find related Robot records from URL context.
-    """
+    """Helper methods to find related Robot records from URL context."""
     @classmethod
     def get_app_or_404(cls, app_name: str):
         """
@@ -29,15 +27,15 @@ class ViewFinder:
             matched_suite = [s for s in RobotTestSuite.objects.filter(active=True, application=app)
                              if s.verbose_name == verbose_suite_name][0]
         except IndexError:
-            raise Http404('No test suite called {name} for the {app} application.'.format(name=verbose_suite_name,
-                                                                                          app=app.name))
+            raise Http404('No suite with verbose name {name} in the {app} application.'.format(name=verbose_suite_name,
+                                                                                               app=app.name))
         return matched_suite
 
     @classmethod
     def get_test_or_404(cls, matched_suite: RobotTestSuite, test_name: str):
         """
-        Returns an active RobotTest object based on the provided tes name and RobotTestSuite, 
-        escaping any encoded characters from the URL. If no match, return a Django Http404 object.
+        Returns an active RobotTest object based on the provided tes name and RobotTestSuite, escaping any encoded 
+        characters from the URL. If no match, return a Django Http404 object.
         """
         return get_object_or_404(RobotTest, active=True, robot_suite=matched_suite, name=test_name)
 
