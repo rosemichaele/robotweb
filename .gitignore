@@ -5,6 +5,7 @@
 .idea/**/workspace.xml
 .idea/**/tasks.xml
 .idea/dictionaries
+.idea/
 Lib/
 Scripts/
 cx_Oracle-doc/
@@ -59,12 +60,11 @@ fabric.properties
 # macOS
 .DS_Store
 
-.idea/
-
+# Python
 **/__pycache__/
-SNOW_Regression/util/
-SNOW_Regression/structures/
 .pyc
 .cache
 output/
 debug.log
+*.sqlite3
+
