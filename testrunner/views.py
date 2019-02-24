@@ -34,7 +34,7 @@ class ViewFinder:
     @classmethod
     def get_test_or_404(cls, matched_suite: RobotTestSuite, test_name: str):
         """
-        Returns an active RobotTest object based on the provided tes name and RobotTestSuite, escaping any encoded 
+        Returns an active RobotTest object based on the provided test name and RobotTestSuite, escaping any encoded
         characters from the URL. If no match, return a Django Http404 object.
         """
         return get_object_or_404(RobotTest, active=True, robot_suite=matched_suite, name=test_name)
