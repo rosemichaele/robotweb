@@ -19,6 +19,9 @@ class BaseObject(models.Model):
                                    help_text='Designates when this thing was created.')
     modified = models.DateTimeField(auto_now=True,
                                     help_text='Designates when this thing was last modified.')
+
+    class Meta:
+        abstract = True
     # created_by = models.ForeignKey(User,
     #                                on_delete=models.PROTECT,
     #                                help_text='Designates who created this thing.',
@@ -31,26 +34,49 @@ class BaseObject(models.Model):
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return str(self)
+
 
 class RobotApplicationUnderTest(BaseObject):
+    description = models.TextField(max_length=4000,
+                                   null=True,
+                                   blank=True)
     app_test_location = models.FilePathField(path=ROBOT_PROJECT_LOCATION,
+                                             default=ROBOT_PROJECT_LOCATION,
                                              allow_files=False,
                                              allow_folders=True,
                                              max_length=200,
                                              recursive=True,
                                              editable=False,
-                                             help_text='The local path to the directory that contains tests for this '
-                                                       'app.')
-    description = models.TextField(max_length=4000, null=True)
-    robot_location = models.FilePathField(path=ROBOT_PROJECT_LOCATION,
-                                          allow_files=True,
-                                          allow_folders=False,
-                                          max_length=200,
-                                          recursive=True,
-                                          editable=False,
-                                          match='^.*.exe.*$',
-                                          help_text='The local path to the robot executable to use when running the '
-                                                    'tests for this application.')
+                                             help_text='The local path to the directory that contains Robot tests for '
+                                                       'this app. Defaults to ROBOT_PROJECT_PATH env variable.')
+    robot_location = models.FileField(max_length=200,
+                                      help_text='Select the local robot executable to use when running the '
+                                                'tests for this application.')
+
+    class Meta:
+        verbose_name = 'Robot application under test'
+        verbose_name_plural = 'Robot applications under test'
+
+
+class RobotTestEnvironment(BaseObject):
+    description = models.TextField(max_length=4000,
+                                   null=True,
+                                   blank=True)
+    host_url = models.URLField(verbose_name='Web URL',
+                               help_text='The base URL to use for testing this application.')
+    for_application = models.ForeignKey(RobotApplicationUnderTest,
+                                        verbose_name='Test environment for',
+                                        on_delete=models.CASCADE,
+                                        related_name='app_test_environment',
+                                        related_query_name='for_application')
+
+    class Meta:
+        unique_together = ('for_application', 'name')
+
+    def __str__(self):
+        return '{app}: {name}'.format(app=self.for_application.name, name=self.name)
 
 
 class RobotTag(BaseObject):
@@ -85,21 +111,25 @@ class RobotTestSuite(BaseObject):
                                on_delete=models.CASCADE,
                                null=True,
                                blank=True,
+                               default='',
                                related_name='child_suite',
                                related_query_name='parent_suite')
     robot_tags = models.ManyToManyField(RobotTag,
                                         blank=True)
 
     suite_location = models.FilePathField(path=ROBOT_PROJECT_LOCATION,
+                                          default=ROBOT_PROJECT_LOCATION,
                                           allow_files=True,
                                           allow_folders=True,
                                           max_length=200,
                                           recursive=True,
-                                          blank=True,
                                           editable=False,
                                           help_text='The local path to the directory or file that contains tests for '           
                                                     'this suite. Options to select this will populate after an '
                                                     'application is selected and saved.')
+
+    class Meta:
+        unique_together = ('application', 'parent', 'name')
 
     def __str__(self):
         return '{app}: {name}'.format(app=self.application.name, name=self.verbose_name)
@@ -123,9 +153,15 @@ class RobotTest(BaseObject):
     robot_tags = models.ManyToManyField(RobotTag,
                                         blank=True)
 
+    class Meta:
+        unique_together = ('robot_suite', 'name')
+
     @property
     def verbose_name(self):
         return self.robot_suite.verbose_name + '.' + self.name
+
+    def __str__(self):
+        return '{app}: {name}'.format(app=self.robot_suite.application, name=self.name)
 
 
 class RobotTestStep(BaseObject):
@@ -135,9 +171,10 @@ class RobotTestStep(BaseObject):
     order = models.IntegerField('execution order',
                                 validators=[MinValueValidator(0)])
     arguments = models.TextField(max_length=4000,
-                                 help_text='A list of arguments passed to the test step keyword'
-                                           ' with a line break between each.',
-                                 null=True)
+                                 help_text='A list of arguments passed to the test step keyword '
+                                           'with a line break between each.',
+                                 null=True,
+                                 blank=True)
 
 
 class RobotTestRun(models.Model):
