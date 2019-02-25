@@ -1,5 +1,3 @@
-import sys
-
 from robot.api import TestData
 from robot.errors import DataError
 from robot.parsing.model import TestCase
