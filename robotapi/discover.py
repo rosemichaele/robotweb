@@ -5,6 +5,8 @@ from django.db.utils import IntegrityError
 
 from testrunner.models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
 
+from .exceptions import RobotDiscoveryException
+
 
 class DiscoveredRobotApplication:
 
@@ -22,8 +24,8 @@ class DiscoveredRobotApplication:
         try:
             self.robot_test_data = TestData(source=robot_app.app_test_location)
         except (TypeError, PermissionError, DataError) as e:
-            raise AssertionError('There was an issue accessing data in the test location for this application. Make '
-                                 'sure it was created correctly. The error message was: ' + str(e))
+            raise RobotDiscoveryException('There was an issue accessing data in the test location for this application.'
+                                          ' Make sure it was created correctly. The error message was: ' + str(e))
         self.test_suites = list()   # list of DiscoveredRobotTestSuite
 
     def discover_suites_and_tests(self):
@@ -39,7 +41,7 @@ class DiscoveredRobotApplication:
     def configure_suites_and_tests(self):
         """After discovery and validation, save all child suites and their tests for access in the RobotWeb site."""
         if self.root_suite is None:
-            raise AssertionError('Tests and suites must be discovered before they can be configured.')
+            raise RobotDiscoveryException('Tests and suites must be discovered before they can be configured.')
         else:
             self.root_suite.configure()
 
@@ -91,12 +93,12 @@ class DiscoveredRobotTestSuite:
             self.suite_test_data = TestData(source=robot_suite.suite_location)
             self.name = robot_suite.verbose_name
         elif robot_suite and not robot_suite.suite_location:
-            raise AssertionError('The RobotTestSuite has no associated location on the file system. No tests can be '
-                                 'discovered until that information is supplied.')
+            raise RobotDiscoveryException('The RobotTestSuite has no associated location on the file system. No tests '
+                                          'can be discovered until that information is supplied.')
         elif not (discovered_robot_app and suite_test_data):
-            raise AssertionError('This appears to be a discovery attempt for a newly created application under test, '
-                                 'but instances of a DiscoveredRobotApplication AND robot.api.TestData were not '
-                                 'supplied. This is required.')
+            raise RobotDiscoveryException('This appears to be a discovery attempt for a newly created application under'
+                                          ' test, but instances of a DiscoveredRobotApplication AND robot TestData were'
+                                          ' not supplied. This is required.')
         else:
             self.discovered_app = discovered_robot_app
             self.suite_test_data = suite_test_data

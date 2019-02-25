@@ -1,0 +1,3 @@
+
+class RobotDiscoveryException(AssertionError):
+    pass
