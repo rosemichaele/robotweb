@@ -88,6 +88,7 @@ class TestDiscovery(TestCase):
             if not isinstance(s.suite_test_data, TestDataDirectory):    # Then it must be a TestCaseFile
                 file_extension = '.' + s.suite_test_data.source.split('.')[-1]
             verbose_name_parts = s.name.split('.')
+            # Robot automatically replaces underscores with spaces when generating test suite names.
             verbose_name_file_parts = [p.replace(' ', '_') for p in verbose_name_parts]
             self.assertEqual(TEST_SUITE_NAME_KEY.get(verbose_name_parts[-1]), s.name)
             self.assertEqual(s.location, UTEST_ROOT + SEP + SEP.join(verbose_name_file_parts) + file_extension)
