@@ -63,7 +63,7 @@ class DiscoveredRobotTestSuite:
     def __init__(self,
                  discovered_robot_app: DiscoveredRobotApplication=None,
                  suite_test_data: TestData=None,
-                 robot_suite: RobotTestSuite = None,
+                 robot_suite: RobotTestSuite=None,
                  _parent=None):
         """
         There are two options for using this object:
