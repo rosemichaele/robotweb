@@ -14,7 +14,7 @@ The following environment variable should be set on the machine hosting the robo
 
 Run Django tests cases with full verbosity
 ------------------------------------------
-Django supports a wide range of testing by extending Python's built-in `unittest.TesCase`. Execute the tests for this
-project by running the following command from the project's root directory (make sure your virtual env is activated.::
+Django supports a wide range of testing by extending Python's built-in `unittest.TestCase`. Execute the tests for this
+project by running the following command from the project's root directory (make sure your virtual env is activated).::
 
     > python -Wa manage.py test --verbosity=2
