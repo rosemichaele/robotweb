@@ -1,7 +1,6 @@
 import os
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from robot.parsing.model import TestDataDirectory
-
 from testrunner.models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
 from robotapi.discover import DiscoveredRobotTest, DiscoveredRobotTestSuite, DiscoveredRobotApplication
 from robotapi.exceptions import RobotDiscoveryException
@@ -10,7 +9,7 @@ SEP = os.path.sep
 HERE = os.path.realpath(__file__)
 UTEST_ROOT = SEP.join(HERE.split(SEP)[:-1])
 ###########################################
-# If the example test suite used for testing is updated ( in TestRobotAppSuite), then the expectations for testing
+# If the example test suite used for testing is updated (in TestRobotAppSuite), then the expectations for testing
 # below need to be reviewed / updated as well.
 ############################################
 TEST_ROBOT_APP_DIR = SEP.join(HERE.split(SEP)[:-1]) + SEP + 'TestRobotAppSuite'
@@ -30,7 +29,7 @@ TEST_SUITE_EXPECTATIONS = {
         'Has Parent': True,
         'Parent': 'TestRobotAppSuite',
         'Children': ['NestedChildSuite', 'TemplateSubSuite', 'AnotherTemplateTestSuite'],
-        'Location': TEST_ROBOT_APP_DIR + '\\RobotAppSubDirectory',
+        'Location': TEST_ROBOT_APP_DIR + SEP + 'RobotAppSubDirectory',
         'Tests': {}
     },
     'TestRobotAppSuite.AppSubSuite1': {
@@ -41,7 +40,7 @@ TEST_SUITE_EXPECTATIONS = {
         'Has Parent': True,
         'Parent': 'TestRobotAppSuite',
         'Children': [],
-        'Location': TEST_ROBOT_APP_DIR + '\\AppSubSuite1.robot',
+        'Location': TEST_ROBOT_APP_DIR + SEP + 'AppSubSuite1.robot',
         'Tests': {
             'Valid Login': {
                 'Doc': '',
@@ -55,7 +54,7 @@ TEST_SUITE_EXPECTATIONS = {
         'Has Parent': True,
         'Parent': 'TestRobotAppSuite',
         'Children': [],
-        'Location': TEST_ROBOT_APP_DIR + '\\AppSubSuite2.txt',
+        'Location': TEST_ROBOT_APP_DIR + SEP + 'AppSubSuite2.txt',
         'Tests': {
             'My Test': {
                 'Doc': 'Example test',
@@ -73,8 +72,8 @@ TEST_SUITE_EXPECTATIONS = {
         'Has Parent': True,
         'Children': ['NestedTestSuite_GivenWhenThen'],
         'Parent': 'RobotAppSubDirectory',
-        'Location': TEST_ROBOT_APP_DIR + '\\RobotAppSubDirectory\\NestedChildSuite',
-        'Tests': {}
+        'Location': TEST_ROBOT_APP_DIR + SEP.join(['', 'RobotAppSubDirectory','NestedChildSuite']),
+        'Tests': {},
     },
     'TestRobotAppSuite.RobotAppSubDirectory.TemplateSubSuite': {
         'Short Name': 'TemplateSubSuite',
@@ -82,7 +81,7 @@ TEST_SUITE_EXPECTATIONS = {
         'Has Parent': True,
         'Parent': 'RobotAppSubDirectory',
         'Children': [],
-        'Location': TEST_ROBOT_APP_DIR + '\\RobotAppSubDirectory\\TemplateSubSuite.robot',
+        'Location': TEST_ROBOT_APP_DIR + SEP.join(['', 'RobotAppSubDirectory', 'TemplateSubSuite.robot']),
         'Tests': {
             'Invalid Username': {
                 'Doc': '',
@@ -116,7 +115,7 @@ TEST_SUITE_EXPECTATIONS = {
         'Has Parent': True,
         'Parent': 'RobotAppSubDirectory',
         'Children': [],
-        'Location': TEST_ROBOT_APP_DIR + '\\RobotAppSubDirectory\\AnotherTemplateTestSuite.robot',
+        'Location': TEST_ROBOT_APP_DIR + SEP.join(['', 'RobotAppSubDirectory', 'AnotherTemplateTestSuite.robot']),
         'Tests': {
             'Additions': {
                 'Doc': '',
@@ -141,12 +140,12 @@ TEST_SUITE_EXPECTATIONS = {
         }
     },
     'TestRobotAppSuite.RobotAppSubDirectory.NestedChildSuite.NestedTestSuite GivenWhenThen': {
-        'Short Name': 'AnotherTemplateTestSuite',
+        'Short Name': 'NestedTestSuite GivenWhenThen',
         'Doc': '',
         'Has Parent': True,
         'Parent': 'NestedChildSuite',
-        'Location': UTEST_ROOT + '\\TestRobotAppSuite\\RobotAppSubDirectory\\NestedChildSuite\\'
-                                 'NestedTestSuite_GivenWhenThen.robot',
+        'Location': UTEST_ROOT + SEP.join(['', 'TestRobotAppSuite', 'RobotAppSubDirectory', 'NestedChildSuite',
+                                           'NestedTestSuite_GivenWhenThen.robot']),
         'Tests': {
             'Addition': {
                 'Doc': '',
@@ -182,7 +181,7 @@ class TestDiscovery(TestCase):
         self.assertEqual(discovered_app.source, TEST_ROBOT_APP_DIR)
         self.assertIsNone(discovered_app.root_suite)
         self.assertEqual(discovered_app.test_suites, [])
-        self.assertEqual(repr(discovered_app), 'DiscoveredRobotApplication: ' +  'My Test Robot App')
+        self.assertEqual(repr(discovered_app), 'DiscoveredRobotApplication: ' + 'My Test Robot App')
 
     def test_bad_app_test_location_raises(self):
         with self.assertRaisesMessage(RobotDiscoveryException, 'There was an issue accessing data in the test location '
@@ -248,30 +247,71 @@ class TestDiscovery(TestCase):
                          msg='Unexpected number of child suites discovered in: ' + discovered_suite.name)
         for child in discovered_suite.child_suites:
             child_short_name = child.name.split(existing_robot_suite.name + '.')[-1]
-            self.assertEquals(TEST_SUITE_EXPECTATIONS.get(discovered_suite.name)['Children'].count(child_short_name), 1,
+            self.assertEqual(TEST_SUITE_EXPECTATIONS.get(discovered_suite.name)['Children'].count(child_short_name), 1,
                               msg=child_short_name)
 
     def test_remove_suite_from_app(self):
-        pass
+        discovered_app = DiscoveredRobotApplication(self.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        remove_suite = 'TestRobotAppSuite.RobotAppSubDirectory.NestedChildSuite'
+        discovered_app.remove_discovered_test_suite(remove_suite)
+        self.assertEqual(len([e for e in TEST_SUITE_EXPECTATIONS if not e.startswith(remove_suite)]),
+                         len(discovered_app.test_suites),
+                         msg='Test suite removal from discovered app was not successful.')
+        self.assertNotIn(remove_suite, discovered_app.test_suites,
+                         msg='Test suite was not removed from the app.')
 
     def test_remove_child_suite_from_parent_and_app(self):
-        pass
+        discovered_app = DiscoveredRobotApplication(self.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        parent = 'TestRobotAppSuite.RobotAppSubDirectory'
+        discovered_suite = [ds for ds in discovered_app.test_suites
+                            if ds.name == parent][0]
+        remove_child_suite = 'TestRobotAppSuite.RobotAppSubDirectory.TemplateSubSuite'
+        discovered_suite.remove_discovered_child_suite(remove_child_suite)
+        self.assertEqual(len(discovered_suite.child_suites),
+                         len([e for e in TEST_SUITE_EXPECTATIONS.get(parent)['Children']
+                              if e != TEST_SUITE_EXPECTATIONS.get(remove_child_suite)['Short Name']]),
+                         msg='Child test suite removal was not successful.')
+        self.assertNotIn(remove_child_suite,
+                         discovered_suite.child_suites,
+                         msg='Child test suite was not removed from the its parent.')
+        self.assertEqual(len([e for e in TEST_SUITE_EXPECTATIONS if not e.startswith(remove_child_suite)]),
+                         len(discovered_app.test_suites),
+                         msg='Child test suite removal from discovered app was not successful.')
+        self.assertNotIn(remove_child_suite,
+                         discovered_app.test_suites,
+                         msg='Child test suite was not removed from the disocvered app.')
 
     def test_remove_test_from_suite(self):
-        pass
+        discovered_app = DiscoveredRobotApplication(self.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        test_suite = 'TestRobotAppSuite.AppSubSuite2'
+        discovered_suite = [ds for ds in discovered_app.test_suites
+                            if ds.name == test_suite][0]
+        remove_test = 'Another Test'
+        discovered_suite.remove_discovered_test(remove_test)
+        self.assertEqual(len([t for t in TEST_SUITE_EXPECTATIONS.get(test_suite)['Tests'] if t != remove_test]),
+                         len(discovered_suite.tests),
+                         msg='Test removal from test suite was unsuccessful.')
+        self.assertNotIn(remove_test,
+                         discovered_suite.tests,
+                         msg='Test was not removed from the discovered suite.')
 
 
-class TestConfiguration(TestCase):
+class TestConfiguration(TransactionTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
         print('Running robotapi configuration unit tests in: ' + HERE)
         print('Dummy Robot test suite located here: ' + TEST_ROBOT_APP_DIR)
         # Create a dummy RobotApplicationUnderTest object saved in the test database (in memory for SQLite3)
-        cls.test_robot_app = RobotApplicationUnderTest.objects.create(name='My Test Robot App',
-                                                                      description='An application created for testing '
-                                                                                  'RobotWeb discovery tools.',
-                                                                      robot_location=HERE,
-                                                                      app_test_location=TEST_ROBOT_APP_DIR)
+
+    def setUp(self):
+        self.test_robot_app = RobotApplicationUnderTest.objects.create(name='My Test Robot App',
+                                                                       description='An application created for testing '
+                                                                                   'RobotWeb discovery tools.',
+                                                                       robot_location=HERE,
+                                                                       app_test_location=TEST_ROBOT_APP_DIR)
 
     def test_suites_must_be_discovered_before_configured(self):
         discovered_app_suites_not_discovered = DiscoveredRobotApplication(self.test_robot_app)
@@ -279,11 +319,52 @@ class TestConfiguration(TestCase):
                                                                'they can be configured.'):
             discovered_app_suites_not_discovered.configure_suites_and_tests()
 
-    def test_configure_robot_suite(self):
-        pass
+    def test_configure_robot_suite_before_parent_raises(self):
+        discovered_app = DiscoveredRobotApplication(self.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        parent_verbose = 'TestRobotAppSuite.RobotAppSubDirectory'
+        suite_name = 'TestRobotAppSuite.RobotAppSubDirectory.TemplateSubSuite'
+        suite_to_configure = [s for s in discovered_app.test_suites if s.name == suite_name][0]
+        with self.assertRaisesMessage(RobotDiscoveryException, 'There should have been an existing parent suite, but '
+                                                               'one was not found. Tried to find a test suite with '
+                                                               'this verbose/display name: ' + parent_verbose):
+            suite_to_configure.configure()
 
-    def test_configure_robot_test(self):
-        pass
+    def test_configure_robot_test_before_suite_raises(self):
+        discovered_app = DiscoveredRobotApplication(self.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        suite_verbose = 'TestRobotAppSuite.RobotAppSubDirectory.TemplateSubSuite'
+        test_name = 'Invalid Username And Password'
+        suite_to_configure = [s for s in discovered_app.test_suites if s.name == suite_verbose][0]
+        test_to_configure = [t for t in suite_to_configure.tests if t.name == test_name][0]
+        with self.assertRaisesMessage(RobotDiscoveryException, 'There should have been an existing test suite for '
+                                                               'this test, but one was not found: ' + suite_verbose):
+            test_to_configure.configure()
 
-    def test_do_not_create_duplicate_root_suites(self):
-        pass
+    def test_prevent_duplicate_root_suites(self):
+        discovered_app = DiscoveredRobotApplication(self.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        discovered_app.root_suite.configure()
+        discovered_app.root_suite.configure()  # prevent root suite dupes, parent == NULL
+        self.assertEqual(len(RobotTestSuite.objects.filter(name='TestRobotAppSuite')), 1)
+
+    def test_configure_robot_app(self):
+        discovered_app = DiscoveredRobotApplication(self.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        discovered_app.configure_suites_and_tests()
+        all_suites = RobotTestSuite.objects.all()
+        self.assertEqual(len(all_suites), len(TEST_SUITE_EXPECTATIONS))
+        for suite in all_suites:
+            expected_suite_info = TEST_SUITE_EXPECTATIONS.get(suite.verbose_name)
+            self.assertEqual(expected_suite_info['Short Name'], suite.name)
+            self.assertEqual(expected_suite_info['Doc'], suite.documentation)
+            self.assertEqual(suite.application, self.test_robot_app)
+            self.assertEqual(expected_suite_info['Location'], suite.suite_location)
+            if expected_suite_info['Parent'] is not None:
+                self.assertEqual(expected_suite_info['Parent'], suite.parent.name)
+            all_suite_tests = RobotTest.objects.filter(robot_suite=suite)
+            self.assertEqual(len(all_suite_tests), len(expected_suite_info['Tests']))
+            for test in all_suite_tests:
+                test_info = expected_suite_info.get('Tests')
+                self.assertIsNotNone(test_info.get(test.name))
+                self.assertEqual(test.documentation, test_info.get(test.name)['Doc'])
