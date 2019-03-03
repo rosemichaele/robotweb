@@ -65,6 +65,5 @@ fabric.properties
 .pyc
 .cache
 output/
-debug.log
+*.log
 *.sqlite3
-
