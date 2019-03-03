@@ -46,7 +46,8 @@ class DiscoveredRobotApplication:
             self.root_suite.configure()
 
     def remove_discovered_test_suite(self, verbose_suite_name):
-        """Remove a test suite from the discovered list if it should not be configured in RobotWeb."""
+        """Remove a test suite from the discovered list if it should not be configured in RobotWeb. This will remove the
+        specified test suite AND any other test suite that begins with the same name (child suites)."""
         self.test_suites = [s for s in self.test_suites if not s.name.startswith(verbose_suite_name)]
         for r_suite in self.test_suites:
             r_suite.remove_discovered_child_suite(verbose_suite_name)
@@ -169,7 +170,8 @@ class DiscoveredRobotTestSuite:
             test.configure()
 
     def remove_discovered_child_suite(self, verbose_suite_name):
-        """Remove a child test suite from the discovered list if it should not be configured in RobotWeb."""
+        """Remove a child test suite from the discovered list if it should not be configured in RobotWeb. Also removes it
+        from the discovered application."""
         self.child_suites = [s for s in self.child_suites if not s.name.startswith(verbose_suite_name)]
         self.discovered_app.test_suites = [ts for ts in self.discovered_app.test_suites
                                            if not ts.name.startswith(verbose_suite_name)]
@@ -179,12 +181,13 @@ class DiscoveredRobotTestSuite:
         self.tests = [t for t in self.tests if t.name != test_name]
 
     def _get_existing_parent_suite(self):
+        print('Looking for parent of: ' + self.name)
         parent_name = '.'.join(self.name.split('.')[:-1])
         try:
             return [s for s in RobotTestSuite.objects.all() if s.verbose_name == parent_name][0]
         except IndexError:
-            raise AssertionError('There should have been an existing parent suite, but one was not found. Tried to '
-                                 'find a test suite with this verbose/display name: ' + parent_name)
+            raise RobotDiscoveryException('There should have been an existing parent suite, but one was not found. '
+                                          'Tried to find a test suite with this verbose/display name: ' + parent_name)
 
     def __str__(self):
         return 'DiscoveredRobotTestSuite: ' + self.name
@@ -217,7 +220,8 @@ class DiscoveredRobotTest:
         try:
             return [s for s in RobotTestSuite.objects.all() if s.verbose_name == self.discovered_suite.name][0]
         except IndexError:
-            raise AssertionError('There should have been an existing test suite for this test, but one was not found.')
+            raise RobotDiscoveryException('There should have been an existing test suite for this test, '
+                                          'but one was not found: ' + self.discovered_suite.name)
 
     def __str__(self):
         return 'DiscoveredRobotTest: ' + self.name
