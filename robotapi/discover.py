@@ -1,11 +1,14 @@
+import logging
+
 from robot.api import TestData
 from robot.errors import DataError
 from robot.parsing.model import TestCase
 from django.db.utils import IntegrityError
 
 from testrunner.models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
-
 from .exceptions import RobotDiscoveryException
+
+logger = logging.getLogger(__name__)
 
 
 class DiscoveredRobotApplication:
@@ -137,14 +140,14 @@ class DiscoveredRobotTestSuite:
             parent = None
             name = self.name
             if len(RobotTestSuite.objects.filter(name=name, parent=parent, application=self.discovered_app.app)) > 0:
-                print('(Continuing) Root test suite already exists.')
+                logger.info('(Continuing) Root test suite already exists.')
                 self._configure_tests()
                 self._configure_child_suites_and_tests()
                 return  # Don't create root test suite since one already exists. Necessary because in SQL, NULL != NULL
         else:
             parent = self._get_existing_parent_suite()
             name = self.name.split('.')[-1]
-        print('Configuring test suite: ' + self.name)
+        logger.info('Configuring test suite: ' + self.name)
         configurable_suite = RobotTestSuite(name=name,
                                             documentation=self.documentation,
                                             parent=parent,
@@ -152,16 +155,16 @@ class DiscoveredRobotTestSuite:
                                             suite_location=self.location)
         try:
             configurable_suite.save()
-            print('Added test suite: ' + configurable_suite.verbose_name)
+            logger.info('Added test suite: ' + configurable_suite.verbose_name)
         except IntegrityError:
-            print('(Skipped) Existing test suite found with the same name and parent suite for {app}: '
-                  '{v}'.format(app=self.discovered_app.app, v=configurable_suite.verbose_name))
+            logger.info('(Skipped) Existing test suite found with the same name and parent suite for {app}: '
+                        '{v}'.format(app=self.discovered_app.app, v=configurable_suite.verbose_name))
         self._configure_tests()
         self._configure_child_suites_and_tests()
 
     def _configure_child_suites_and_tests(self):
         if not self.child_suites:
-            print('(Continuing) No child suites to configure for: ' + self.name)
+            logger.info('(Continuing) No child suites to configure for: ' + self.name)
         for child in self.child_suites:
             child.configure()
 
@@ -181,7 +184,7 @@ class DiscoveredRobotTestSuite:
         self.tests = [t for t in self.tests if t.name != test_name]
 
     def _get_existing_parent_suite(self):
-        print('Looking for parent of: ' + self.name)
+        logger.info('Looking for parent of: ' + self.name)
         parent_name = '.'.join(self.name.split('.')[:-1])
         try:
             return [s for s in RobotTestSuite.objects.all() if s.verbose_name == parent_name][0]
@@ -205,16 +208,16 @@ class DiscoveredRobotTest:
 
     def configure(self):
         """Create a RobotTest for this discovered test case."""
-        print('Configuring test: ' + self.name)
+        logger.info('Configuring test: ' + self.name)
         configurable_test = RobotTest(name=self.name,
                                       documentation=self.documentation,
                                       robot_suite=self._get_existing_robot_suite())
         try:
             configurable_test.save()
-            print('Added test: ' + configurable_test.verbose_name)
+            logger.info('Added test: ' + configurable_test.verbose_name)
         except IntegrityError:
-            print('(Skipped) There is an existing test with the same name and parent suite for {app}: '
-                  '{v}'.format(v=configurable_test.verbose_name, app=self.discovered_suite.discovered_app.app))
+            logger.info('(Skipped) There is an existing test with the same name and parent suite for {app}: '
+                        '{v}'.format(v=configurable_test.verbose_name, app=self.discovered_suite.discovered_app.app))
 
     def _get_existing_robot_suite(self):
         try:
