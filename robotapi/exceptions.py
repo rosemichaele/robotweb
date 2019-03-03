@@ -1,3 +1,3 @@
 
-class RobotDiscoveryException(AssertionError):
+class RobotDiscoveryException(Exception):
     pass
