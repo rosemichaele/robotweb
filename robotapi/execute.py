@@ -113,7 +113,7 @@ class RobotExecutionEngine:
         elif self.outputdir is not None and self.output is not None:
             self._add_to_command('--outputdir', self.outputdir)
         else:
-            self._add_to_command('--output', 'NONE')
+            self._add_to_command('--outputdir', 'output')
 
     def _handle_tests(self):
         if self.tests:
