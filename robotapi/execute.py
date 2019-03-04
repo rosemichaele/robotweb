@@ -44,16 +44,18 @@ class RobotExecutionEngine:
             logger.info('Attempting to set executable and test location based on input test suites.')
             if len(set([s.application.robot_location for s in suites])) != 1:
                 raise RobotExecutionException('Tried to configure the execution engine with tests from different '
-                                              'applications. This is not allowed. Make sure that all tests / test '
-                                              'suites are associated with one application per test run.')
+                                              'applications or an empty iterable was provided to the engine. This is '
+                                              'not allowed. Make sure that all tests / test suites are associated with '
+                                              'one application per test run and that test objects are not empty.')
             self.executable = suites[0].application.robot_location
             self.tests_location = suites[0].application.app_test_location
         elif application is None and suites is None and tests is not None:
             logger.info('Attempting to set executable and test location based on input tests.')
             if len(set([t.robot_suite.application.robot_location for t in tests])) != 1:
                 raise RobotExecutionException('Tried to configure the execution engine with tests from different '
-                                              'applications. This is not allowed. Make sure that all tests / test '
-                                              'suites are associated with one application per test run.')
+                                              'applications or an empty iterable was provided to the engine. This is '
+                                              'not allowed. Make sure that all tests / test suites are associated with '
+                                              'one application per test run and that test objects are not empty.')
             self.executable = tests[0].robot_suite.application.robot_location
             self.tests_location = tests[0].robot_suite.application.app_test_location
         else:
@@ -81,7 +83,7 @@ class RobotExecutionEngine:
             self._command.extend(args)
 
     def _validate_robot_executable(self):
-        if not self.executable.endswith('robot') or self.executable.endswith('robot.exe'):
+        if not (self.executable.endswith('robot') or self.executable.endswith('robot.exe')):
             raise RobotExecutionException('The robot executable was not defined correctly for this application. Please '
                                           'check that and try again.')
 

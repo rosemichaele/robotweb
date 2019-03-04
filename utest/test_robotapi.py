@@ -429,9 +429,11 @@ class TestExecution(TestCase):
         suite_different_app.application = self.other_robot_app
         suite_different_app.save()
         with self.assertRaisesMessage(RobotExecutionException, 'Tried to configure the execution engine with tests '
-                                                               'from different applications. This is not allowed. Make '
-                                                               'sure that all tests / test suites are associated with '
-                                                               'one application per test run.'):
+                                                               'from different applications or an empty iterable was '
+                                                               'provided to the engine. This is not allowed. Make sure '
+                                                               'that all tests / test suites are associated with one '
+                                                               'application per test run and that test objects are not '
+                                                               'empty.'):
             robot = RobotExecutionEngine(suites=suites)
             robot.run_subprocess()
 
