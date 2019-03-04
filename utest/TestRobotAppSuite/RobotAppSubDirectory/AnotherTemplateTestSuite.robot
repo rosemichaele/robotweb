@@ -1,6 +1,5 @@
 *** Settings ***
 Test Template     Calculate
-Library           CalculatorLibrary
 
 *** Test Cases ***    Expression    Expected
 Additions             12 + 2 + 2    16

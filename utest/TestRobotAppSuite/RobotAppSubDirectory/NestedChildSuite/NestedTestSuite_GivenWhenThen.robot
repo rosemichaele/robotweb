@@ -1,5 +1,4 @@
 *** Settings ***
-Library           CalculatorLibrary
 
 *** Test Cases ***
 Addition

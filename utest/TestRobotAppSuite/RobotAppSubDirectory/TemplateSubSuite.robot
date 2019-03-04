@@ -3,7 +3,6 @@ Suite Setup       Open Browser To Login Page
 Suite Teardown    Close Browser
 Test Setup        Go To Login Page
 Test Template     Login With Invalid Credentials Should Fail
-Resource          resource.txt
 
 *** Test Cases ***               User Name        Password
 Invalid Username                 invalid          ${VALID PASSWORD}
