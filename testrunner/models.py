@@ -51,9 +51,9 @@ class RobotApplicationUnderTest(BaseObject):
                                              editable=False,
                                              help_text='The local path to the directory that contains Robot tests for '
                                                        'this app. Defaults to ROBOT_PROJECT_PATH env variable.')
-    robot_location = models.FileField(max_length=200,
-                                      help_text='Select the local robot executable to use when running the '
-                                                'tests for this application.')
+    robot_location = models.CharField(max_length=200,
+                                      help_text='Provide the path to the local robot executable to use when running '
+                                                ' the tests for this application.')
 
     class Meta:
         verbose_name = 'Robot application under test'
