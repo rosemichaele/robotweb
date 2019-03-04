@@ -1,9 +1,13 @@
 import os
 from django.test import TestCase, TransactionTestCase
 from robot.parsing.model import TestDataDirectory
+
 from testrunner.models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
 from robotapi.discover import DiscoveredRobotTest, DiscoveredRobotTestSuite, DiscoveredRobotApplication
-from robotapi.exceptions import RobotDiscoveryException
+from robotapi.exceptions import RobotDiscoveryException, RobotExecutionException
+from robotapi.execute import RobotExecutionEngine
+
+from robotweb.settings import BASE_DIR
 
 SEP = os.path.sep
 HERE = os.path.realpath(__file__)
@@ -54,7 +58,7 @@ TEST_SUITE_EXPECTATIONS = {
         'Has Parent': True,
         'Parent': 'TestRobotAppSuite',
         'Children': [],
-        'Location': TEST_ROBOT_APP_DIR + SEP + 'AppSubSuite2.txt',
+        'Location': TEST_ROBOT_APP_DIR + SEP + 'AppSubSuite2.robot',
         'Tests': {
             'My Test': {
                 'Doc': 'Example test',
@@ -159,7 +163,7 @@ TEST_SUITE_EXPECTATIONS = {
 class TestDiscovery(TestCase):
     @classmethod
     def setUpTestData(cls):
-        print('Running robotapi discovery unit tests in: ' + HERE)
+        print('\nRunning robotapi discovery unit tests in: ' + HERE)
         print('Dummy Robot test suite located here: ' + TEST_ROBOT_APP_DIR)
         # Create a dummy RobotApplicationUnderTest object saved in the test database (in memory for SQLite3)
         cls.test_robot_app = RobotApplicationUnderTest.objects.create(name='My Test Robot App',
@@ -248,7 +252,7 @@ class TestDiscovery(TestCase):
         for child in discovered_suite.child_suites:
             child_short_name = child.name.split(existing_robot_suite.name + '.')[-1]
             self.assertEqual(TEST_SUITE_EXPECTATIONS.get(discovered_suite.name)['Children'].count(child_short_name), 1,
-                              msg=child_short_name)
+                             msg=child_short_name)
 
     def test_remove_suite_from_app(self):
         discovered_app = DiscoveredRobotApplication(self.test_robot_app)
@@ -302,7 +306,7 @@ class TestDiscovery(TestCase):
 class TestConfiguration(TransactionTestCase):
     @classmethod
     def setUpClass(cls):
-        print('Running robotapi configuration unit tests in: ' + HERE)
+        print('\nRunning robotapi configuration unit tests in: ' + HERE)
         print('Dummy Robot test suite located here: ' + TEST_ROBOT_APP_DIR)
         # Create a dummy RobotApplicationUnderTest object saved in the test database (in memory for SQLite3)
 
@@ -366,5 +370,134 @@ class TestConfiguration(TransactionTestCase):
             self.assertEqual(len(all_suite_tests), len(expected_suite_info['Tests']))
             for test in all_suite_tests:
                 test_info = expected_suite_info.get('Tests')
+                self.assertIsInstance(test, RobotTest)
                 self.assertIsNotNone(test_info.get(test.name))
                 self.assertEqual(test.documentation, test_info.get(test.name)['Doc'])
+
+
+class TestExecution(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        print('\nRunning robotapi test execution unit tests in: ' + HERE)
+        print('Dummy Robot test suite located here: ' + TEST_ROBOT_APP_DIR)
+        # Create a dummy RobotApplicationUnderTest object saved in the test database (in memory for SQLite3)
+        cls.test_robot_app = RobotApplicationUnderTest.objects.create(name='My Test Robot App',
+                                                                      description='An application created for testing '
+                                                                                  'RobotWeb discovery tools.',
+                                                                      robot_location=BASE_DIR,
+                                                                      app_test_location=TEST_ROBOT_APP_DIR)
+        discovered_app = DiscoveredRobotApplication(cls.test_robot_app)
+        discovered_app.discover_suites_and_tests()
+        discovered_app.configure_suites_and_tests()
+        cls.other_robot_app = RobotApplicationUnderTest.objects.create(name='My Other Test Robot App',
+                                                                       description='Another application created for '
+                                                                                   'testing RobotWeb discovery tools.',
+                                                                       robot_location=os.getenv('ROBOT_PROJECT_PATH') +
+                                                                                                 SEP.join(['', 'path',
+                                                                                                           'to', 'other',
+                                                                                                           'robot']),
+                                                                       app_test_location=os.getenv('ROBOT_PROJECT_PATH')
+                                                                                                   + SEP.join(['',
+                                                                                                               'path',
+                                                                                                               'to',
+                                                                                                               'other',
+                                                                                                               'tests'])
+                                                                       )
+
+    @staticmethod
+    def set_robot_for_app(app: RobotApplicationUnderTest, robot_location: str):
+        app.robot_location = robot_location
+        app.save()
+
+    def test_execute_with_correct_robot(self):
+        app = self.other_robot_app
+        robot = RobotExecutionEngine(application=app)
+        self.assertEqual(self.other_robot_app.robot_location,
+                         robot.executable,
+                         msg='RobotExecutionEngine did not set the executable attribute correctly.')
+
+    def test_executable_is_robot(self):
+        app = self.test_robot_app
+        with self.assertRaisesMessage(RobotExecutionException, 'The robot executable was not defined correctly for this'
+                                                               ' application. Please check that and try again.'):
+            robot = RobotExecutionEngine(application=app)
+            robot.run_subprocess()
+
+    def test_cannot_test_multiple_apps_at_once(self):
+        suites = RobotTestSuite.objects.all()
+        suite_different_app = suites[0]
+        suite_different_app.application = self.other_robot_app
+        suite_different_app.save()
+        with self.assertRaisesMessage(RobotExecutionException, 'Tried to configure the execution engine with tests '
+                                                               'from different applications. This is not allowed. Make '
+                                                               'sure that all tests / test suites are associated with '
+                                                               'one application per test run.'):
+            robot = RobotExecutionEngine(suites=suites)
+            robot.run_subprocess()
+
+    def test_unsupported_options_passed_to_engine(self):
+        with self.assertRaisesMessage(RobotExecutionException, 'Unsupported options passed to RobotWeb test execution '
+                                                               'engine.'):
+            RobotExecutionEngine(application=self.test_robot_app,
+                                 michael='cool')
+
+    def test_execute_robot_test(self):
+        self.set_robot_for_app(self.test_robot_app, 'robot')
+        tests = [RobotTest.objects.all()[0]]
+        robot = RobotExecutionEngine(tests=tests)
+        robot.run_subprocess()
+        self.assertIsNotNone(robot.robot_output,
+                             msg='Robot did not execute the test as expected.')
+        self.assertIn(tests[0].name,
+                      robot.robot_output,
+                      msg='Test result did not contain the expected test name.')
+        self.addCleanup(self.set_robot_for_app, self.test_robot_app, HERE)
+
+    def test_execute_robot_suite(self):
+        self.set_robot_for_app(self.test_robot_app, 'robot')
+        suites = [RobotTestSuite.objects.all()[0]]
+        robot = RobotExecutionEngine(suites=suites)
+        robot.run_subprocess()
+        self.assertIsNotNone(robot.robot_output,
+                             msg='Robot did not execute the suite as expected.')
+        self.assertIn(suites[0].name,
+                      robot.robot_output,
+                      msg='Test result did not contains the expected suite name.')
+        self.addCleanup(self.set_robot_for_app, self.test_robot_app, HERE)
+
+    def test_execute_robot_with_tags(self):
+        include_tags = 'smokeORregression'
+        exclude_tags = 'auth*'
+        robot = RobotExecutionEngine(application=self.test_robot_app,
+                                     include=include_tags,
+                                     exclude=exclude_tags)
+        self.assertEqual(robot.include,
+                         include_tags,
+                         msg='Include tags were not set correctly.')
+        self.assertEqual(robot.exclude,
+                         exclude_tags,
+                         msg='Exclude tags were not set correctly.')
+
+    def test_execute_output_none_by_default(self):
+        robot = RobotExecutionEngine(application=self.test_robot_app)
+        self.assertIsNone(robot.output,
+                          msg='Execution output should be None by default, but was not.')
+
+    def test_execute_robot_dryrun(self):
+        robot = RobotExecutionEngine(application=self.test_robot_app,
+                                     dryrun=True)
+        self.assertTrue(robot.dryrun)
+
+    def test_execute_robot_with_loglevel(self):
+        robot = RobotExecutionEngine(application=self.test_robot_app,
+                                     loglevel='DEBUG')
+        self.assertEqual(robot.loglevel,
+                         'DEBUG',
+                         msg='Robot execution engine did not set the desired log level correctly.')
+
+    def test_cannot_execute_without_tests_suites_application(self):
+        with self.assertRaisesMessage(RobotExecutionException, 'Invalid usage of Robot Execution Engine: a list of '
+                                                               'tests, suites, or an application for testing must be '
+                                                               'provided at minimum.'):
+            RobotExecutionEngine()
+
