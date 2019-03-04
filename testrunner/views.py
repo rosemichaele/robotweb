@@ -2,6 +2,7 @@ from urllib.parse import unquote
 
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, Http404
+from django.template import loader
 
 from .models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
 
@@ -41,10 +42,12 @@ class ViewFinder:
 
 
 def index(request):
-    return HttpResponse('<h3>Select an application to test below.</h3>'
-                        '<ul>{apps}</ul>'.format(apps=''.join(['<li><a href="applications/{app}">{app}</a></li>'.
-                                                              format(app=app.name)
-                                                              for app in RobotApplicationUnderTest.objects.all()])))
+    active_apps = RobotApplicationUnderTest.objects.filter(active=True)
+    template = loader.get_template('testrunner/index.html')
+    context = {
+        'active_apps': active_apps
+    }
+    return HttpResponse(template.render(context, request))
 
 
 def application(request, application_name):
