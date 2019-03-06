@@ -2,8 +2,8 @@
 {% block content %}
     {% if active_apps %}
     <h3>Select an application to test below.</h3>
-        {% for app in active_apps %}
         <ul>
+            {% for app in active_apps %}
             <li><a href="/testrunner/applications/{{ app.name }}">{{ app.name }}</a></li>
             {% endfor %}
         </ul>

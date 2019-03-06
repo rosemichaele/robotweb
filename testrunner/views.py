@@ -3,6 +3,8 @@ from urllib.parse import unquote
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, Http404
 from django.template import loader
+from django.db.models import Q
+
 
 from .models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
 
@@ -52,7 +54,14 @@ def index(request):
 
 def application(request, application_name):
     app = ViewFinder.get_app_or_404(application_name)
-    return HttpResponse('This page will show the {name} application view.'.format(name=app.name))
+    root_suite = RobotTestSuite.objects.get(active=True, parent=None)
+    suites = app.app_suite.filter(Q(active=True, parent=None) | Q(active=True, parent=root_suite))
+    template = loader.get_template('testrunner/application.html')
+    context = {
+        'app': app,
+        'suites': suites
+    }
+    return HttpResponse(template.render(context, request))
 
 
 def suite(request, application_name, suite_name):
