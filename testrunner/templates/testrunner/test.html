@@ -8,5 +8,9 @@
         <p>No documentation is available for this test.</p>
     {% endif %}
     <p>Return to the test suite by clicking <a href="{% url 'testrunner:suite-detail' t.robot_suite.application.pk t.robot_suite.pk %}">here</a>.</p>
+    <form action="{% url 'testrunner:run-test' pk=t.pk %}" method="post">
+    {% csrf_token %}
+    <input type="submit" value="Run Test">
+    </form>
     {% endwith %}
 {% endblock content %}

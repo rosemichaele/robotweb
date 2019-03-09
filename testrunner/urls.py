@@ -17,7 +17,10 @@ urlpatterns = [
     # This view will give details about the tests in a certain suite and allow them to be run.
     path('applications/<int:app_id>/suites/<int:pk>/tests/', views.TestListView.as_view(), name='test-list'),
     # This view will give details about the test.
-    path('applications/<int:app_id>/suites/<int:suite_id>/tests/<int:pk>',
+    path('applications/<int:app_id>/suites/<int:suite_id>/tests/<int:pk>/',
          views.TestDetailView.as_view(),
          name='test-detail'),
+    path('tests/<int:pk>/run', views.run_test, name='run-test'),
+    # This view will be displayed when a test run is submitted successfully.
+    path('success', views.run_success, name='run-success'),
 ]

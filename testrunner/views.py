@@ -1,6 +1,9 @@
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, reverse
 from django.views import generic
+from django.http import HttpResponseRedirect
 from .models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
+
+from robotapi.execute import RobotExecutionEngine
 
 
 def index(request):
@@ -30,10 +33,10 @@ class SuiteListView(generic.ListView):
 
     def get_queryset(self):
         parent_verbose = self.request.GET.get('parent')
-        if parent_verbose is not None:
+        try:
             self.parent = [suite for suite in RobotTestSuite.objects.all()
                            if suite.verbose_name.lower() == parent_verbose.lower()][0]
-        else:
+        except IndexError:
             self.parent = RobotTestSuite.objects.get(parent=None)
         self.application = get_object_or_404(RobotApplicationUnderTest, pk=self.kwargs['pk'])
         active_app_suites = RobotTestSuite.objects.filter(active=True,
@@ -76,3 +79,15 @@ class TestListView(generic.ListView):
 class TestDetailView(generic.DetailView):
     model = RobotTest
     template_name = 'testrunner/test.html'
+
+
+def run_test(request, pk):
+    robot_test = [get_object_or_404(RobotTest, pk=pk)]  # Engine requires a list of RobotTest
+    engine = RobotExecutionEngine(tests=robot_test)
+    engine.run_subprocess()
+    return HttpResponseRedirect(reverse('testrunner:run-success'))
+
+
+def run_success(request):
+    template_name = 'testrunner/test_run_success.html'
+    return render(request, template_name=template_name)
