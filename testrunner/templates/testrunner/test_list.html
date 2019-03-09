@@ -1,0 +1,14 @@
+{% extends "testrunner/base.html" %}
+{% block content %}
+<h2>Below are the tests configured for {{ app.name }} in the {{suite.verbose_name}} test suite.</h2>
+<p>You can select any of them to view details or run all of the automated tests from this page.</p>
+    {% if tests %}
+    <ul>
+        {% for test in tests %}
+        <li><a href="{{ test.pk }}">{{ test.name }}</a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No test suites have been configured for testing under this suite. You can change that <a href="{% url 'testrunner:application-detail' app.pk %}">here</a>.</p>
+    {% endif %}
+{% endblock %}

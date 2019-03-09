@@ -1,13 +1,8 @@
 {% extends "testrunner/base.html" %}
 {% block content %}
-    {% if suites %}
-    <h3>Welcome to the {{ app.name }} Test Runner page. Select a test suite below or Run them all.</h3>
-        <ul>
-            {% for suite in suites %}
-            <li><a href="/testrunner/applications/{{ app.name }}/{{ suite.verbose_name }}">{{ suite.verbose_name }}</a></li>
-            {% endfor %}
-        </ul>
-    {% else %}
-    <h2>No test suites have been configured for testing {{ app.name}}. You can do that <a href="/testrunner/applications/{{ suite.verbose_name }}/create">here</a>.</h2>
-    {% endif %}
+    {% with robotapplicationundertest as a %}
+    <h2>{{ a.name }} Test Runner</h2>
+    <p>{{ a.description }}</p>
+    <p>View the test suites for {{ a.name }} <a href="{% url 'testrunner:suite-list' a.pk %}">here</a>.</p>
+    {% endwith %}
 {% endblock content %}

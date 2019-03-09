@@ -1,81 +1,78 @@
-from urllib.parse import unquote
-
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, Http404
-from django.template import loader
-from django.db.models import Q
-
-
+from django.shortcuts import get_object_or_404, render
+from django.views import generic
 from .models import RobotApplicationUnderTest, RobotTestSuite, RobotTest
 
 
-class ViewFinder:
-    """Helper methods to find related Robot records from URL context."""
-    @classmethod
-    def get_app_or_404(cls, app_name: str):
-        """
-        Returns an active RobotApplicationUnderTest object based on the provided name, escaping any encoded characters
-        from the URL. If no match, return a Django Http404 object.
-        """
-        return get_object_or_404(RobotApplicationUnderTest, active=True, name=unquote(app_name))
-
-    @classmethod
-    def get_suite_or_404(cls, app: RobotApplicationUnderTest, suite_name: str):
-        """
-        Returns an active RobotTestSuite object based on the provided suite name and RobotApplicationUnderTest, 
-        escaping any encoded characters from the URL. If no match, return a Django Http404 object.
-        """
-        verbose_suite_name = '.'.join([n for n in unquote(suite_name).split('.')])
-        try:
-            matched_suite = [s for s in RobotTestSuite.objects.filter(active=True, application=app)
-                             if s.verbose_name == verbose_suite_name][0]
-        except IndexError:
-            raise Http404('No suite with verbose name {name} in the {app} application.'.format(name=verbose_suite_name,
-                                                                                               app=app.name))
-        return matched_suite
-
-    @classmethod
-    def get_test_or_404(cls, matched_suite: RobotTestSuite, test_name: str):
-        """
-        Returns an active RobotTest object based on the provided test name and RobotTestSuite, escaping any encoded
-        characters from the URL. If no match, return a Django Http404 object.
-        """
-        return get_object_or_404(RobotTest, active=True, robot_suite=matched_suite, name=test_name)
-
-
 def index(request):
-    active_apps = RobotApplicationUnderTest.objects.filter(active=True)
-    template = loader.get_template('testrunner/index.html')
-    context = {
-        'active_apps': active_apps
-    }
-    return HttpResponse(template.render(context, request))
+    template_name = 'testrunner/index.html'
+    return render(request, template_name=template_name)
 
 
-def application(request, application_name):
-    app = ViewFinder.get_app_or_404(application_name)
-    root_suite = RobotTestSuite.objects.get(active=True, parent=None)
-    suites = app.app_suite.filter(Q(active=True, parent=None) | Q(active=True, parent=root_suite))
-    template = loader.get_template('testrunner/application.html')
-    context = {
-        'app': app,
-        'suites': suites
-    }
-    return HttpResponse(template.render(context, request))
+class ApplicationListView(generic.ListView):
+    template_name = 'testrunner/application_list.html'
+    context_object_name = 'active_apps'
+
+    def get_queryset(self):
+        """Return all active applications."""
+        return RobotApplicationUnderTest.objects.filter(active=True)
 
 
-def suite(request, application_name, suite_name):
-    app = ViewFinder.get_app_or_404(application_name)
-    matched_suite = ViewFinder.get_suite_or_404(app, suite_name)
-    return HttpResponse('This page will show information about the {suite} test suite for {app}.'
-                        .format(suite=matched_suite.verbose_name, app=app.name))
+class ApplicationDetailView(generic.DetailView):
+    model = RobotApplicationUnderTest
+    template_name = 'testrunner/application.html'
 
 
-def test(request, application_name, suite_name, test_name):
-    app = ViewFinder.get_app_or_404(application_name)
-    matched_suite = ViewFinder.get_suite_or_404(app, suite_name)
-    matched_test = ViewFinder.get_test_or_404(matched_suite, test_name)
-    return HttpResponse('This page will show information about the {test} test '
-                        'in the {suite} test suite of the {app} application'.format(test=matched_test.name,
-                                                                                    suite=matched_suite.verbose_name,
-                                                                                    app=app.name))
+class SuiteListView(generic.ListView):
+    template_name = 'testrunner/suite_list.html'
+    context_object_name = 'suites'
+    application = None
+    parent = None
+
+    def get_queryset(self):
+        parent_verbose = self.request.GET.get('parent')
+        if parent_verbose is not None:
+            self.parent = [suite for suite in RobotTestSuite.objects.all()
+                           if suite.verbose_name.lower() == parent_verbose.lower()][0]
+        else:
+            self.parent = RobotTestSuite.objects.get(parent=None)
+        self.application = get_object_or_404(RobotApplicationUnderTest, pk=self.kwargs['pk'])
+        active_app_suites = RobotTestSuite.objects.filter(active=True,
+                                                          application=self.application,
+                                                          parent=self.parent)
+        return active_app_suites
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['app'] = self.application
+        context['parent'] = self.parent
+        return context
+
+
+class SuiteDetailView(generic.DetailView):
+    model = RobotTestSuite
+    template_name = 'testrunner/suite.html'
+
+
+class TestListView(generic.ListView):
+    template_name = 'testrunner/test_list.html'
+    context_object_name = 'tests'
+    application = None
+    test_suite = None
+
+    def get_queryset(self):
+        self.test_suite = get_object_or_404(RobotTestSuite, pk=self.kwargs['pk'])
+        self.application = self.test_suite.application
+        active_suite_tests = RobotTest.objects.filter(active=True,
+                                                      robot_suite=self.test_suite)
+        return active_suite_tests
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['app'] = self.application
+        context['suite'] = self.test_suite
+        return context
+
+
+class TestDetailView(generic.DetailView):
+    model = RobotTest
+    template_name = 'testrunner/test.html'

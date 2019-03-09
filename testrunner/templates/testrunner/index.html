@@ -1,13 +1,6 @@
 {% extends "testrunner/base.html" %}
 {% block content %}
-    {% if active_apps %}
-    <h3>Select an application to test below.</h3>
-        <ul>
-            {% for app in active_apps %}
-            <li><a href="/testrunner/applications/{{ app.name }}">{{ app.name }}</a></li>
-            {% endfor %}
-        </ul>
-    {% else %}
-    <h2>Oops! No applications have been configured for testing. You can do that <a href="/testrunner/applications/create">here</a>.</h2>
-    {% endif %}
+    <h2>IT Development Test Runner</h2>
+    <p>Welcome to the IT Development Test Runner site. View the <a href="{% url 'testrunner:application-list' %}">list of applications</a> with
+    automated tests or <a href="applications/create">configure a new one</a>.</p>
 {% endblock content %}

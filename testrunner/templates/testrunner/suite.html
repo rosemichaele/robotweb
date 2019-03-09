@@ -1,0 +1,13 @@
+{% extends "testrunner/base.html" %}
+{% block content %}
+    {% with robottestsuite as s %}
+    <h2>{{ s.verbose_name }} Test Suite</h2>
+    {% if s.documentation %}
+        <p>{{ s.documentation }}</p>
+     {% else %}
+        <p>No documentation is available for this test suite.</p>
+    {% endif %}
+    <p>View the list of child test suites for this one <a href="{% url 'testrunner:suite-list' s.application.pk %}?parent={{ s.verbose_name }}">here</a>.</p>
+    <p>View the list of tests in this suite <a href="{% url 'testrunner:test-list' s.application.pk s.pk %}">here</a>.</p>
+    {% endwith %}
+{% endblock content %}

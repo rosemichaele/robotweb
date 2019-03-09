@@ -1,0 +1,12 @@
+{% extends "testrunner/base.html" %}
+{% block content %}
+    {% with robottest as t %}
+    <h2>{{ t.name }} Test </h2>
+    {% if t.documentation %}
+        <p>{{ t.documentation}}</p>
+     {% else %}
+        <p>No documentation is available for this test.</p>
+    {% endif %}
+    <p>Return to the test suite by clicking <a href="{% url 'testrunner:suite-detail' t.robot_suite.application.pk t.robot_suite.pk %}">here</a>.</p>
+    {% endwith %}
+{% endblock content %}
