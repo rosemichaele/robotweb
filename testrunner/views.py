@@ -33,12 +33,12 @@ class SuiteListView(generic.ListView):
 
     def get_queryset(self):
         parent_verbose = self.request.GET.get('parent')
+        self.application = get_object_or_404(RobotApplicationUnderTest, pk=self.kwargs['pk'])
         try:
             self.parent = [suite for suite in RobotTestSuite.objects.all()
                            if suite.verbose_name.lower() == parent_verbose.lower()][0]
-        except IndexError:
-            self.parent = RobotTestSuite.objects.get(parent=None)
-        self.application = get_object_or_404(RobotApplicationUnderTest, pk=self.kwargs['pk'])
+        except (AttributeError, IndexError):
+            self.parent = RobotTestSuite.objects.get(parent=None, application=self.application)
         active_app_suites = RobotTestSuite.objects.filter(active=True,
                                                           application=self.application,
                                                           parent=self.parent)
