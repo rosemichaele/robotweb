@@ -82,8 +82,15 @@ class TestDetailView(generic.DetailView):
 
 
 def run_test(request, pk):
-    robot_test = [get_object_or_404(RobotTest, pk=pk)]  # Engine requires a list of RobotTest
-    engine = RobotExecutionEngine(tests=robot_test)
+    robot_test = get_object_or_404(RobotTest, pk=pk)
+    engine = RobotExecutionEngine(tests=[robot_test])   # Engine requires a list of RobotTest
+    engine.run_subprocess()
+    return HttpResponseRedirect(reverse('testrunner:run-success'))
+
+
+def run_suite(request, pk):
+    robot_suite = get_object_or_404(RobotTestSuite, pk=pk)
+    engine = RobotExecutionEngine(suites=[robot_suite])  # Engine requires a list of RobotTestSuite
     engine.run_subprocess()
     return HttpResponseRedirect(reverse('testrunner:run-success'))
 

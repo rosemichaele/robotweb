@@ -21,6 +21,7 @@ urlpatterns = [
          views.TestDetailView.as_view(),
          name='test-detail'),
     path('tests/<int:pk>/run', views.run_test, name='run-test'),
+    path('suites/<int:pk>/run', views.run_suite, name='run-suite'),
     # This view will be displayed when a test run is submitted successfully.
     path('success', views.run_success, name='run-success'),
 ]

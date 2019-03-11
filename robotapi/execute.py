@@ -121,7 +121,7 @@ class RobotExecutionEngine:
                 self._add_to_command('--test', test.name)
         if self.suites:
             for suite in self.suites:
-                self._add_to_command('--suite', suite.name)
+                self._add_to_command('--suite', suite.verbose_name)
         if self.application is not None:
             self._add_to_command(self.application.app_test_location)
         elif self.suites is not None:
